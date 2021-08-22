@@ -116,17 +116,56 @@ async function anonVent(message) {
   return true;
 }
 
-//async function anonQuestion(message) {
-//  await client.api.channels('655798058189324299').messages.post({
-//    data: {
-//      embed: {
-//        title:`Anonymous${(message.embeds[0].title.replace(/\-(.*)/,'')).replace(/New/,'')}`,
-//        description:message.embeds[0].description
-//      }
-//    }
-//  });
-//  return true;
-//}
+async function anonQuestionPost(details) {
+  let embed = {
+    title:`New Sexual Health Question - ${details.Timestamp[0]}`
+  }
+  let question = details['What is your question?'][0];
+  if (question.length > 1200) {
+      let contentTrim = question.substring(0, Math.min(question.length, 1200));
+      contentTrim = contentTrim + '...'
+      embed.description = contentTrim
+  } else {
+      embed.description = question
+  }
+  client.api.channels('').messages.post({
+      data: {
+          embed: embed,
+          components: [
+              {
+                  type: 1,
+                  components: [
+                      {
+                          type: 2,
+                          label: "Approve",
+                          style: 3,
+                          custom_id: "anon_question_accept"
+                      },
+                      {
+                          type: 2,
+                          label: "Deny",
+                          style: 4,
+                          custom_id: "anon_question_deny"
+                      }
+                  ]
+              
+              }
+          ]
+      }
+  });
+}
+
+async function anonQuestion(message) {
+  await client.api.channels('').messages.post({
+    data: {
+      embed: {
+        title:`Anonymous${(message.embeds[0].title.replace(/\-(.*)/,'')).replace(/New/,'')}`,
+        description:message.embeds[0].description
+      }
+    }
+  });
+  return true;
+}
 
 async function anonSuggestionPost(details) {
   let embed = {
@@ -174,13 +213,13 @@ async function anonSuggestion(message) {
   let channel = client.channels.cache.get(settings.suggestionschannel);
   let suggestReq = await suggestions.anonymousSuggestion(message.embeds[0].description, channel);
   if (suggestReq.success = true) {
-      suggestReq.message.react('');
-      suggestReq.message.react('');
-      suggestReq.message.react('');
-      return;
+    suggestReq.message.react('');
+    suggestReq.message.react('');
+    suggestReq.message.react('');
+    return;
   } else {
-      botstuff.send(suggestReq.error);
-      outputchannel.send('An error occured, please suggest manually.');
+    botstuff.send(suggestReq.error);
+    outputchannel.send('An error occured, please suggest manually.');
   }
 }
 
@@ -188,20 +227,41 @@ async function verifPost(details) {
   let msg = new Discord.MessageEmbed
   msg.title = ('New Verification - ' + details.Timestamp[0])
   if (details["Reddit Username"][0] != '') {
-      msg.addField("Reddit Username", details["Reddit Username"][0]);
+    msg.addField("Reddit Username", details["Reddit Username"][0]);
   }
   if (details["Discord Username"][0] != '') {
-      msg.addField("Discord Username", details["Discord Username"][0]);
+    msg.addField("Discord Username", details["Discord Username"][0]);
   }
   msg.addField("Verification Photo", details["Please submit a selfie of yourself holding up a piece of paper to your face with your Reddit or Discord username on it. The paper should be creased or crumpled."][0]);
   if (details["(Optional) If you look to be close to, or over 20, you may wish to also attach a photo of an official document/ID that shows your date of birth. If you do not submit this and we are uncertain that you are aged under 20, we may contact you to follow up."][0] != '') {
-      msg.addField("ID Photo", details["(Optional) If you look to be close to, or over 20, you may wish to also attach a photo of an official document/ID that shows your date of birth. If you do not submit this and we are uncertain that you are aged under 20, we may contact you to follow up."][0]);
+    msg.addField("ID Photo", details["(Optional) If you look to be close to, or over 20, you may wish to also attach a photo of an official document/ID that shows your date of birth. If you do not submit this and we are uncertain that you are aged under 20, we may contact you to follow up."][0]);
   }
   if (details["(Optional) Anything you would like to add?"][0] != '') {
-      msg.addField("Other Comments", details["(Optional) Anything you would like to add?"][0]);
+    msg.addField("Other Comments", details["(Optional) Anything you would like to add?"][0]);
   }
   let outputchannel = await client.channels.fetch('');
   outputchannel.send(msg);
+}
+
+async function sendDM(userID, message) {
+  try {
+    let user = await client.users.fetch(userID);
+    let DM = await user.createDM();
+    DM.send(message);
+    return { success: true }; //yay
+  } catch(e) {
+    return { success: false, error: e };
+  }
+}
+
+async function sendMsg(channelID, message) {
+  try {
+    let channel = await client.channels.fetch(channelID);
+    channel.send(message);
+    return { success: true }; //yay
+  } catch(e) {
+    return { success: false, error: e };
+  }
 }
 
 client.login("");
@@ -209,10 +269,13 @@ client.login("");
 exports.postConcern = anonConcernPost;
 exports.postVent = anonVentPost;
 exports.sendVent = anonVent;
-//exports.sendQuestion = anonQuestion;
+exports.postQuestion = anonQuestionPost;
+exports.sendQuestion = anonQuestion;
 exports.postSuggestion = anonSuggestionPost;
 exports.sendSuggestion = anonSuggestion;
 exports.postVerif = verifPost;
 exports.sendUncomfy = uncomfy;
 exports.demographics = demographics;
+exports.dm = sendDM;
+exports.msg = sendMsg;
 //exports.changeUncomfyChannel = changeUncomfyChannel;

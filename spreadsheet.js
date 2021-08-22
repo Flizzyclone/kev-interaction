@@ -38,6 +38,16 @@ router.post('/anonsuggestion', async (req, res) => {
   res.sendStatus(200);
 });
 
+router.post('/anonquestion', async (req, res) => {
+  console.log(req.body)
+  if (req.headers.authorization != `Basic ${key}`) {
+    res.status(403).json({ error: 'Invalid Authorization'});
+    return;
+  }
+  botFunc.postQuestion(req.body);
+  res.sendStatus(200);
+});
+
 router.post('/verification', async (req, res) => {
   console.log(req.body)
   if (req.headers.authorization != `Basic ${key}`) {

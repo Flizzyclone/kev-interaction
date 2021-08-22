@@ -59,6 +59,65 @@ let demjson = {
     ]
 }
 
+let staffjsonperms = {
+    "permissions": [
+        {
+            "id": "",
+            "type": 1,
+            "permission": true
+        },
+        {
+            "id": "",
+            "type": 1,
+            "permission": true
+        },
+        {
+            "id": "",
+            "type": 1,
+            "permission": true
+        },
+        {
+            "id": "",
+            "type": 1,
+            "permission": true
+        }
+    ]
+}
+
+let msgjson = {
+    "name": "msg",
+    "description": "Send a message in a channel using Kevin",
+    "options": [
+        {
+            "name": "channel",
+            "description": "The channel you would like to send a message to",
+            "type": 7,
+            "required": true
+        },
+        {
+            "name": "message",
+            "description": "The message you would like to send",
+            "type": 3,
+            "required": true
+        }
+    ],
+    "default_permission":false
+}
+
+let svmjson = {
+    "name": "svm",
+    "description": "Send the Kevin introduction questions to a user",
+    "options": [
+        {
+            "name": "user",
+            "description": "The user you like to send intro questions to",
+            "type": 6,
+            "required": true
+        }
+    ],
+    "default_permission":false
+}
+
 headers = {
     "Authorization": "Bot ",
     'Content-Type': 'application/json'
@@ -72,14 +131,6 @@ async function init() {
         body: JSON.stringify(json)
     }).then(response => response.json())
     .then(data => console.log(data));
-    
-    //await fetch(`https://discord.com/api/v8/applications//guilds//commands/828725774915600395`,
-    //    {
-    //      method: 'DELETE',
-    //      headers: headers,
-    //    //body: JSON.stringify(demjson)
-    //}).then(response => response.json())
-    //.then(data => console.log(data));
 }
 
 init()

@@ -78,7 +78,37 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
           }
         });
       }
-    }
+    } else if (interaction.data.name == 'dm' || interaction.data.name == 'msg' || interaction.data.name == 'svm') {
+        res.set('Content-Type', 'application/json')
+        res.send(JSON.stringify({
+          "type":5
+        }));
+        let response;
+        if (interaction.data.name == 'dm') {
+          response = await botFunc.dm(interaction.data.options[0].value, interaction.data.options[1].value);
+        } else if (interaction.data.name == 'msg') {
+          response = await botFunc.msg(interaction.data.options[0].value, interaction.data.options[1].value);
+        } else if (interaction.data.name == 'svm') {
+          response = await intro.sendVerificationMsg(interaction.data.options[0].value);
+        }
+        if (response.success == true ) {
+          await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify({
+            content:'Message sent!'
+          }), {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
+        } else {
+          await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify({
+            content:'There was an error running this command (`' + response.error + '`)'
+          }), {
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          })
+        }
+      }
   } else if (req.body.type == 3) {
     const interaction = req.body;
     res.set('Content-Type', 'application/json');
