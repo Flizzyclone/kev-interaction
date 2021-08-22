@@ -8,8 +8,9 @@ const botFunc = require('./botfunctions');
 const messageTools = require('./messagetools');
 const intro = require('./intro');
 const FormData = require('form-data');
+const config = require('./config.json');
 
-const PUB_KEY = '';
+const PUB_KEY = config.PUB_KEY;
 
 router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
   if (req.body.type == 1) {
@@ -135,7 +136,7 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         } else if (detail == "no") {
           intro.nameStage(interaction.user.id);
-          intro.updateUserValue(interaction.user.id,"redditname","**None/Didn't want to verify, ask for verification through Discord**");
+          intro.updateUserValue(interaction.user.id,"reddit_name","**None/Didn't want to verify, ask for verification through Discord**");
           let messageEdit = await messageTools.disableComponents(interaction);
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         }
@@ -156,7 +157,7 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         } else if (detail == "no") {
           intro.nameStage(interaction.user.id);
-          intro.updateUserValue(interaction.user.id,"redditname","**None/Didn't want to verify, ask for verification through Discord**");
+          intro.updateUserValue(interaction.user.id,"reddit_name","**None/Didn't want to verify, ask for verification through Discord**");
           let messageEdit = await messageTools.disableComponents(interaction);
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         }
@@ -167,7 +168,7 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         } else if (detail == "no") {
           intro.nameStage(interaction.user.id);
-          intro.updateUserValue(interaction.user.id,"redditname","**None/Didn't want to verify, ask for verification through Discord**");
+          intro.updateUserValue(interaction.user.id,"reddit_name","**None/Didn't want to verify, ask for verification through Discord**");
           let messageEdit = await messageTools.disableComponents(interaction);
           await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
         }

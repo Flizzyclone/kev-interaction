@@ -1,18 +1,76 @@
 //Libraries
-//discord
 const Discord = require("discord.js");
 const client = new Discord.Client({
     ws: { intents: ["DIRECT_MESSAGES","DIRECT_MESSAGE_REACTIONS","GUILDS","GUILD_MEMBERS","GUILD_MESSAGES","GUILD_MESSAGE_REACTIONS"] }
 });
-let fs = require('fs'); // file system
-const roleIDs = JSON.parse(fs.readFileSync('./roles.json','utf-8'));
 
-//other functions
-async function updateUserValue(id,prop,val) {
-    let data = JSON.parse(fs.readFileSync('./members.json'));
-    data[id][prop] = val;
-    fs.writeFileSync('./members.json',JSON.stringify(data));
-}
+const config = require('./config.json');
+
+const { Sequelize } = require('sequelize');
+
+const sequelize = new Sequelize(config.intro.database.databaseName, config.intro.database.username, config.intro.database.password, {
+	host: config.intro.database.host == "" ? "localhost" : config.intro.database.host,
+	dialect: config.intro.database.dialect == "" ? "mysql" : config.intro.database.dialect,
+	logging: false,
+	storage: config.intro.database.storage == "" ? undefined : config.intro.database.storage
+});
+
+const memberDB = sequelize.define('memberDB', {
+    user_id: {
+      type: Sequelize.STRING,
+      unique: true,
+      primaryKey: true,
+      allowNull: false
+    },
+    reddit_name: {
+      type: Sequelize.STRING,
+      unique: false
+    },
+    name: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    age: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    sexuality: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    romantic: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    gender: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    pronoun: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    region: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    interest: {
+        type: Sequelize.STRING,
+        unique: false,
+    },
+    color: {
+        type: Sequelize.STRING,
+        unique: false
+    },
+    alt: {
+        type: Sequelize.BOOLEAN,
+        unique: false
+    },
+},{
+    freezeTableName: true
+});
+
+memberDB.sync();
 
 client.on("ready", async () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -20,7 +78,7 @@ client.on("ready", async () => {
 
 client.on("message", async (msg) => {
     var args = msg.content.split(" ");
-    let GTV = client.guilds.cache.get('');
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
     switch (args[0]) {
         case "!gtv":
             if (args[1] == 'svm' && msg.member.hasPermission('MANAGE_MESSAGES')) {
@@ -29,8 +87,7 @@ client.on("message", async (msg) => {
                 memid = memid.replace('!','');
                 memid = memid.replace('<@','');
                 try {
-                    let member = await client.users.cache.get(memid);
-                    let memtosend = await GTV.member(member)
+                    let memtosend = await GTV.members.fetch(memid)
                     initiateVerif(memtosend);
                     msg.channel.send('Message Sent!');
                 } catch(e) {
@@ -57,17 +114,23 @@ client.on("message", async (msg) => {
 });
 
 client.on("guildMemberAdd", async (member) => {
-    initiateVerif(member);
+    if (member.guild.id == config.intro.guild_id) {
+        initiateVerif(member); 
+    }
 });
 
+async function updateUserValue(id, prop, val) {
+    memberDB.update({ [prop]: val }, { where: { user_id: id } });
+}
+
 async function initiateVerif(member) {
-    let outputChannel = await client.channels.cache.get('');
+    let outputChannel = client.channels.cache.get(config.intro.outputChannel);
     let directmess = await member.createDM();
     try {
         client.api.channels(directmess.id).messages.post({
             data: {
                 embed: {
-                    title:'Welcome to !',
+                    title:`Welcome to ${member.guild.name}!`,
                     description:'To ensure the safety of our community, we require that you go through an introduction process whereby you need to fill out some basic info about yourself and this bot will set you up with roles. After that, a moderator will review to make sure you are verified and will give you access to the Discord.',
                     color:15282739
                 } 
@@ -77,42 +140,42 @@ async function initiateVerif(member) {
         console.log('cant send DM');
         console.log(error.message);
         if (error.message == 'Cannot send messages to this user') {
-            let channel = client.channels.cache.get('');
-            channel.send('Hey <@!' + member.id + "> due to your privacy settings, you are unable to proceed with bot verification. If you would prefer to use bot verification, please turn `Allow direct messages from server members` on in `Privacy & Safety` and then DM `!restart` to <@!>. Otherwise, follow the pinned message for manual verification.");
+            let manualVerif = client.channels.cache.get(config.intro.manualVerif);
+            manualVerif.send('Hey <@!' + member.id + "> due to your privacy settings, you are unable to proceed with bot verification. If you would prefer to use bot verification, please turn `Allow direct messages from server members` on in `Privacy & Safety` and then DM `!restart` to <@!>. Otherwise, follow the pinned message for manual verification.");
             outputChannel.send(`Couldn't send initial verification message to ${member.id} because of their privacy settings.`);
         } else {
-            let channel = client.channels.cache.get('');
-            channel.send(error.message);
+            let manualVerif = client.channels.cache.get(config.intro.manualVerif);
+            manualVerif.send(error.message);
             outputChannel.send(`Unknown error sending initial DM message to ${member.id}`);
         }
-        return
+        return;
     }
     console.log(member.user.tag + ' joined, messages sent');
-    outputChannel.send(`${member.user.tag} joined, messages sent`) //disabled for testing
-    let data = JSON.parse(fs.readFileSync('./members.json'));
-    if (data[member.id] == null || data[member.id].name == null || data[member.id].age == undefined || data[member.id].sexuality == undefined || data[member.id].romantic == undefined || data[member.id].gender == undefined || data[member.id].pronoun == undefined || data[member.id].region == undefined || data[member.id].alt == undefined) { //if person has not joined b4
+    outputChannel.send(`${member.user.tag} joined, messages sent`); //disabled for testing
+    if ((await memberDB.count({where: {user_id: member.id }})) == 0) { //if person has not joined before
         console.log('user not found, adding a row');
-        let userObj = new Object;
-        userObj.id = member.user.id;
-        userObj.tag = member.user.tag;
-        data[userObj.id] = userObj;
-        fs.writeFileSync('./members.json',JSON.stringify(data));    
+        memberDB.create({ user_id: member.id });
         beginningStage(member);
     } else {
-        let data = JSON.parse(fs.readFileSync('./members.json'));
-        previouslyJoined(member);
-        data[member.id].tag = member.user.tag;
+        let memEntry = await memberDB.findByPk(member.id);
+        console.log(memEntry.dataValues.pronoun)
+        if (memEntry.dataValues.name == null || memEntry.dataValues.reddit_name == null || memEntry.dataValues.age == null || memEntry.dataValues.pronoun == null || memEntry.dataValues.region == null || memEntry.dataValues.romantic == null || memEntry.dataValues.sexuality == null || memEntry.dataValues.alt == null) {
+            beginningStage(member);
+        } else {
+            previouslyJoined(member);
+        }
     }
 };
 
 async function previouslyJoined(member) {
-    let data = JSON.parse(fs.readFileSync('./members.json'));
+    let memEntry = await memberDB.findByPk(member.id);
     let directmess = await member.createDM();
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
     client.api.channels(directmess.id).messages.post({
         data: {
             embed: {
                 title:'Previous Info',
-                description:`**Looks like you've joined before! Does all this information still look up to date?**\n\nName: ${data[member.id].name}\nReddit: ${data[member.id].redditname}\nAge: ${data[member.id].age}\nSexuality: ${data[member.id].sexuality}\nRomantic Orientation: ${data[member.id].romantic}\nGender: ${data[member.id].gender}\nPronouns: ${data[member.id].pronoun}\nRegion: ${data[member.id].region}\nAlt Account: ${data[member.id].alt}`
+                description:`**Looks like you've joined before! Does all this information still look up to date?**\n\nName: ${memEntry.dataValues.name}\nReddit: ${memEntry.dataValues.reddit_name.replace("**None/Didn't want to verify, ask for verification through Discord**","None")}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexuality: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nRegion: ${(GTV.roles.cache.get(memEntry.dataValues.region)).name}\nAlt Account: ${memEntry.dataValues.alt}`
             },
             components: [
                 {
@@ -139,34 +202,29 @@ async function previouslyJoined(member) {
 
 async function previousYes(id) {
     finished(id);
-    let data = JSON.parse(fs.readFileSync('members.json'));
-    const GTV = client.guilds.cache.get('');
-    let member =await GTV.members.fetch(id);
-    member.setNickname((data[member.id].name), 'Automated introduction nicknaming');
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].age));
-    member.roles.add(role);
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].sexuality));
-    member.roles.add(role);
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].romantic));
-    member.roles.add(role);
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].gender));
-    member.roles.add(role);
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].pronoun));
-    member.roles.add(role);
-    role = GTV.roles.cache.find(role => role.name === (data[member.id].region));
-    member.roles.add(role);
-    if (data[member.id].alt == true) {
-        member.roles.add(GTV.roles.cache.get(''));
+    let memEntry = await memberDB.findByPk(id);
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
+    let member = await GTV.members.fetch(id);
+    member.setNickname((memEntry.dataValues.name), 'Automated introduction nicknaming');
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.age));
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.pronoun));
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.region));
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.sexuality));
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.romantic));
+    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.gender));
+    console.log(memEntry.dataValues.alt);
+    if (memEntry.dataValues.alt == "True") {
+        member.roles.add(GTV.roles.cache.get(config.intro.roleIDs.alt));
     }
-    if (data[member.id].color != undefined) {
-        member.roles.add(GTV.roles.cache.get(data[member.id].color));
+    if (memEntry.dataValues.color != null) {
+        member.roles.add(GTV.roles.cache.get(memEntry.dataValues.color));
     }
-    if (data[member.id].interests != undefined) {
-        let interests = data[member.id].interests;
-        for (i=0; i < interests.length; i++) {
-            role = GTV.roles.cache.get(interests[i]);
-            member.roles.add(role);
+    if (memEntry.dataValues.interest != null) {
+        let roleIDs = memEntry.dataValues.interest.split(';');
+        for (i=0; i < roleIDs.length-1; i++) {
+            member.roles.add(GTV.roles.cache.get(roleIDs[i]));
         }
+        console.log(roleIDs);
     }
 }
 
@@ -198,7 +256,7 @@ async function notOnSub(id) {
     let directmess = await user.createDM();
     client.api.channels(directmess.id).messages.post({
         data: {
-            content:"Please verify at ",
+            content:`Please verify at ${config.intro.verificationLink}`,
             components: [{
                     type:1,
                     components: [{
@@ -276,18 +334,18 @@ async function redditUserInput(id) {
             msg = msg.content.toString();
             msg = msg.replace('u/','');
             msg = msg.replace('/u/','');
-            updateUserValue(id,"redditname",msg)
+            memberDB.update({ reddit_name: msg }, { where: { user_id: id } });
             nameStage(id);
         });
 }
 
 async function nameStage(id) {
-    const GTV = await client.guilds.fetch('');
+    let GTV = await client.guilds.fetch(config.intro.guild_id);
     let user = await client.users.fetch(id);
     let directmess = await user.createDM();
     let member = await GTV.members.fetch(id);
-    await directmess.send('Please type your first name. This will be used to set your nickname in the server.')
-    const filter = (msg) => msg.content
+    await directmess.send('Please type your first name. This will be used to set your nickname in the server.');
+    const filter = (msg) => msg.content;
     directmess.awaitMessages(filter, { max: 1})
         .then(collected => {
             let name = collected.first();
@@ -296,9 +354,9 @@ async function nameStage(id) {
                 directmess.send(`Please shorten your nickname to under 32 characters.`);
                 nameStage(id);
             } else {
-                member.setNickname(name, 'Automated introduction nicknaming')
-                stageAge(id)
-                updateUserValue(id,"name",name)
+                member.setNickname(name, 'Automated introduction nicknaming');
+                stageAge(id);
+                memberDB.update({ name: name }, { where: { user_id: id } });
             }
         });
 }
@@ -356,27 +414,23 @@ async function stageAge(id) {
 
 async function addRole(id, category, val) {
     if (val == "none") {
-        updateUserValue(id, category, "None");
+        memberDB.update({ [category]: "None" }, { where: { user_id: id } });
         return;
     }
-    const GTV = client.guilds.cache.get('');
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
     let member = await GTV.members.fetch(id);
-    if (typeof roleIDs[val] == 'object') {
+    if (typeof config.intro.roleIDs[val] == 'object') {
         let role;
-        for(let i=0; i < roleIDs[val].length; i++) {
-            role = GTV.roles.cache.get(roleIDs[val][i]);
+        for(let i=0; i < config.intro.roleIDs[val].length; i++) {
+            role = GTV.roles.cache.get(config.intro.roleIDs[val][i]);
             member.roles.add(role);
         }
-        updateUserValue(id,category,role.name);
+        memberDB.update({ [category]: role.id }, { where: { user_id: id } }); //roles besides the last one get left behind here, but thats ok.
         return;
     } else {
-        let role = GTV.roles.cache.get(roleIDs[val]);
+        let role = GTV.roles.cache.get(config.intro.roleIDs[val]);
         member.roles.add(role);
-        if (category != "color") {
-            updateUserValue(id,category,role.name);
-        } else {
-            updateUserValue(id,category,roleIDs[val]);
-        } 
+        memberDB.update({ [category]: role.id }, { where: { user_id: id } });
     }
 }
 
@@ -757,7 +811,7 @@ async function regionStage(id) {
 }
 
 async function interestsStage(id) {
-    updateUserValue(id,"interests",[])
+    memberDB.update({ interest: "" }, { where: { user_id: id } })
     let user = await client.users.fetch(id);
     let directmess = await user.createDM();
     client.api.channels(directmess.id).messages.post({
@@ -863,31 +917,27 @@ async function interestsStage(id) {
 }
 
 async function addInterestRole(id, detail) {
-    let GTV = client.guilds.cache.get('');
-    let roleID = roleIDs[detail];
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
+    let roleID = config.intro.roleIDs[detail];
     let role = GTV.roles.cache.get(roleID);
     let member = await GTV.members.fetch(id);
     member.roles.add(role);
-    let data = JSON.parse(fs.readFileSync('members.json'))
-    let arr = data[id].interests;
-    arr.push(roleID);
-    updateUserValue(id,"interests",arr);
+    let memEntry = await memberDB.findByPk(id);
+    let memInterest = memEntry.dataValues.interest;
+    memInterest += `${role.id};`;
+    memberDB.update({ interest: memInterest }, { where: { user_id: id } });
 }
 
 async function removeInterestRole(id, detail) {
-    let GTV = client.guilds.cache.get('');
-    let roleID = roleIDs[detail];
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
+    let roleID = config.intro.roleIDs[detail];
     let role = GTV.roles.cache.get(roleID);
     let member = await GTV.members.fetch(id);
     member.roles.remove(role);
-    let data = JSON.parse(fs.readFileSync('members.json'))
-    let arr = data[id].interests;
-    console.log(arr);
-    arr = arr.filter(function(role) {
-        return role !== roleID;
-    });
-    console.log(arr);
-    updateUserValue(id,"interests",arr);
+    let memEntry = await memberDB.findByPk(id);
+    let memInterest = memEntry.dataValues.interest;
+    memInterest = memInterest.replace(`${role.id};`,"");
+    memberDB.update({ interest: memInterest }, { where: { user_id: id } });
 }
 
 async function colorStage(id) {
@@ -901,31 +951,31 @@ async function colorStage(id) {
             components: [{
                     type: 2,
                     label: "Deep Purple",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.deeppurple},
                     style: 1,
                     custom_id: "intro_color_deeppurple"
                 },{
                     type: 2,
                     label: "Hot Pink",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.hotpink},
                     style: 1,
                     custom_id: "intro_color_hotpink"
                 },{
                     type: 2,
                     label: "Lavender",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.lavender},
                     style: 1,
                     custom_id: "intro_color_lavender"
                 },{
                     type: 2,
                     label: "Lavender Tea",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.lavendertea},
                     style: 1,
                     custom_id: "intro_color_lavendertea"
                 },{
                     type: 2,
                     label: "Pretty in Pink",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.prettyinpink},
                     style: 1,
                     custom_id: "intro_color_prettyinpink"
                 }]
@@ -933,105 +983,115 @@ async function colorStage(id) {
             type: 1,
             components: [{
                     type: 2,
+                    label: "Pastel Pink",
+                    emoji: {id: config.intro.emojiIDs.pastelpink},
+                    style: 1,
+                    custom_id: "intro_color_pastelpink"
+                },{
+                    type: 2,
                     label: "Pastel Violet",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.pastelviolet},
                     style: 1,
                     custom_id: "intro_color_pastelviolet"
                 },{
                     type: 2,
                     label: "Sky Blue",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.skyblue},
                     style: 1,
                     custom_id: "intro_color_skyblue"
                 },{
                     type: 2,
                     label: "Angel",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.angel},
                     style: 1,
                     custom_id: "intro_color_angel"
                 },{
                     type: 2,
                     label: "Ocean Blue",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.oceanblue},
                     style: 1,
                     custom_id: "intro_color_oceanblue"
-                },{
-                    type: 2,
-                    label: "Tiffany Blue",
-                    emoji: {id: ""},
-                    style: 1,
-                    custom_id: "intro_color_tiffanyblue"
                 }
             ]
         },{
             type: 1,
             components: [{
                     type: 2,
+                    label: "Tiffany Blue",
+                    emoji: {id: config.intro.emojiIDs.tiffanyblue},
+                    style: 1,
+                    custom_id: "intro_color_tiffanyblue"
+                },{
+                    type: 2,
                     label: "Cyan",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.cyan},
                     style: 1,
                     custom_id: "intro_color_cyan"
                 },{
                     type: 2,
                     label: "Forest Green",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.forestgreen},
                     style: 1,
                     custom_id: "intro_color_forestgreen"
                 },{
                     type: 2,
                     label: "Light Green",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.lightgreen},
                     style: 1,
                     custom_id: "intro_color_lightgreen"
                 },{
                     type: 2,
                     label: "Lemon",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.lemon},
                     style: 1,
                     custom_id: "intro_color_lemon"
-                },{
-                    type: 2,
-                    label: "Honey",
-                    emoji: {id: ""},
-                    style: 1,
-                    custom_id: "intro_color_honey"
                 }
             ]
         },{
             type: 1,
             components: [{
                     type: 2,
+                    label: "Honey",
+                    emoji: {id: config.intro.emojiIDs.honey},
+                    style: 1,
+                    custom_id: "intro_color_honey"
+                },{
+                    type: 2,
                     label: "Flame Orange",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.flameorange},
                     style: 1,
                     custom_id: "intro_color_flameorange"
                 },{
                     type: 2,
                     label: "Tangerine",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.tangerine},
                     style: 1,
                     custom_id: "intro_color_tangerine"
                 },{
                     type: 2,
                     label: "Mahogany",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.mahogany},
                     style: 1,
                     custom_id: "intro_color_mahogany"
                 },{
                     type: 2,
                     label: "Dark Red",
-                    emoji: {id: ""},
+                    emoji: {id: config.intro.emojiIDs.darkred},
                     style: 1,
                     custom_id: "intro_color_darkred"
-                },{
+                }
+            ]
+        },{
+            type: 1,
+            components: [{
                     type: 2,
                     label: "None",
                     style: 1,
                     custom_id: "intro_color_none"
                 }
             ]
-        }]
         }
+        ]}
     });
 }
 
@@ -1065,31 +1125,32 @@ async function altStage(id) {
 }
 
 async function altAccount(id) {
-    let GTV = client.guilds.cache.get('');
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
     let member = await GTV.members.fetch(id);
-    member.roles.add('');
+    member.roles.add(config.intro.roleIDs.alt);
 }
 
 async function finished(id) {
+    let GTV = await client.guilds.fetch(config.intro.guild_id);
     let user = await client.users.fetch(id);
     let directmess = await user.createDM();
     client.api.channels(directmess.id).messages.post({
         data: {
             embed: {
                 title:"You're all set!",
-                description:"Remember to read #read-me and #rules!\n\nA Moderator will look over your introduction soon, and if all looks good you will gain access to the server.\n\nIf you want to change your roles at any time, you can do so [Here]().",
+                description:`Remember to read #read-me and #rules!\n\nA Moderator will look over your introduction soon, and if all looks good you will gain access to the server.\n\nIf you want to change your roles at any time, you can do so [Here](${config.intro.roleypolyLink}).`,
                 color:3249999
             } 
         }
     })
     //get data
-    let data = JSON.parse(fs.readFileSync('members.json'))
-    if (id == '') {
-        client.api.channels('').messages.post({
+    let memEntry = await memberDB.findByPk(id);
+    if (config.intro.blacklist.indexOf(id) != -1) {
+        client.api.channels(config.intro.approvalChannel).messages.post({
             data: {
                 embed: {
-                    title:`New Member - ${data[id].name}/${data[id].tag}`,
-                    description:`Discord Tag: ${data[id].tag}\nDiscord ID: ${id}\nFirst Name: ${data[id].name}\nReddit Username: ${data[id].redditname}\nAge: ${data[id].age}\nSexual Orientation: ${data[id].sexuality}\nRomantic Orientation: ${data[id].romantic}\nGender Identity: ${data[id].gender}\nPreferred Pronouns: ${data[id].pronoun}\nAlt Account: ${data[id].alt}`
+                    title:`New Member - ${memEntry.dataValues.name}/${user.tag}`,
+                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nAlt Account: ${memEntry.dataValues.alt}`
                 }, 
                 components: [
                     {
@@ -1108,11 +1169,11 @@ async function finished(id) {
             }
         });
     } else {
-        client.api.channels('').messages.post({
+        client.api.channels(config.intro.approvalChannel).messages.post({
             data: {
                 embed: {
-                    title:`New Member - ${data[id].name}/${data[id].tag}`,
-                    description:`Discord Tag: ${data[id].tag}\nDiscord ID: ${id}\nFirst Name: ${data[id].name}\nReddit Username: ${data[id].redditname}\nAge: ${data[id].age}\nSexual Orientation: ${data[id].sexuality}\nRomantic Orientation: ${data[id].romantic}\nGender Identity: ${data[id].gender}\nPreferred Pronouns: ${data[id].pronoun}\nAlt Account: ${data[id].alt}`
+                    title:`New Member - ${memEntry.dataValues.name}/${user.tag}`,
+                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nAlt Account: ${memEntry.dataValues.alt}`
                 }, 
                 components: [
                     {
@@ -1140,22 +1201,22 @@ async function finished(id) {
 }
 
 async function userApproved(id) {
-    let GTV = await client.guilds.fetch('');
+    let GTV = await client.guilds.fetch(config.intro.guild_id);
     let member = await GTV.members.fetch(id);
-    let general = await client.channels.fetch('');
-    if (member.roles.cache.has('') == false ) {
-        role = await GTV.roles.fetch('');
+    let general = await client.channels.fetch(config.intro.general);
+    if (member.roles.cache.has(config.intro.roleIDs.member) == false ) {
+        role = await GTV.roles.fetch(config.intro.roleIDs.member);
         member.roles.add(role);
     }
-    if (member.roles.cache.has('') == true ) {
-        role = await GTV.roles.fetch('');
+    if (member.roles.cache.has(config.intro.roleIDs.newmember) == true ) {
+        role = await GTV.roles.fetch(config.intro.roleIDs.newmember);
         member.roles.remove(role);
     }
-    let welcomesent = await general.send(`Everybody welcome ${member} to the server!`);
-    welcomesent.react('👋');
+    await general.send(`Everybody welcome ${member} to the server!`)
+        .then(msg => msg.react('👋'));
 }
 
-client.login("");
+client.login(config.intro.discord_token);
 
 module.exports = {
     updateUserValue, addRole, previousYes, redditAccCheck, wantSub, redditUserInput, notOnSub, nameStage, sexualityStage, romanticStage, genderStage, pronounStage, regionStage, interestsStage, colorStage, altStage, altAccount, addInterestRole, removeInterestRole, finished, userApproved
