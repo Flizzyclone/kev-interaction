@@ -1216,8 +1216,19 @@ async function userApproved(id) {
         .then(msg => msg.react('👋'));
 }
 
+async function sendVerificationMsg(id) {
+    let GTV = await client.guilds.fetch(config.intro.guild_id);
+    try {
+        let memtosend = await GTV.members.fetch(id);
+        initiateVerif(memtosend);
+        return { success: true }; //yay
+    } catch(e) {
+        return { success: false, error: e };
+    }
+}
+
 client.login(config.intro.discord_token);
 
 module.exports = {
-    updateUserValue, addRole, previousYes, redditAccCheck, wantSub, redditUserInput, notOnSub, nameStage, sexualityStage, romanticStage, genderStage, pronounStage, regionStage, interestsStage, colorStage, altStage, altAccount, addInterestRole, removeInterestRole, finished, userApproved
+    updateUserValue, addRole, previousYes, redditAccCheck, wantSub, redditUserInput, notOnSub, nameStage, sexualityStage, romanticStage, genderStage, pronounStage, regionStage, interestsStage, colorStage, altStage, altAccount, addInterestRole, removeInterestRole, finished, userApproved, sendVerificationMsg
 };
