@@ -515,9 +515,9 @@ async function sexualityStage(id) {
                             custom_id: "intro_sexuality_othersexuality"
                         },{
                             type: 2,
-                            label: "None",
+                            label: "Unlabeled",
                             style: 1,
-                            custom_id: "intro_sexuality_none"
+                            custom_id: "intro_sexuality_unlabeledsexuality"
                         }]
                 }]
         }
@@ -605,9 +605,9 @@ async function romanticStage(id) {
                             custom_id: "intro_romantic_otherromantic"
                         },{
                             type: 2,
-                            label: "None",
+                            label: "Unlabeled",
                             style: 1,
-                            custom_id: "intro_romantic_none"
+                            custom_id: "intro_romantic_unlabeledromantic"
                         }]
                 }]
         }
@@ -690,9 +690,9 @@ async function genderStage(id) {
                             custom_id: "intro_gender_othergender"
                         },{
                             type: 2,
-                            label: "None",
+                            label: "Unlabeled",
                             style: 1,
-                            custom_id: "intro_gender_none"
+                            custom_id: "intro_gender_unlabeledgender"
                         }]
                 }]
         }

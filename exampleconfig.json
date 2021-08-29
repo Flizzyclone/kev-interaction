@@ -1,5 +1,6 @@
 {
     "PUB_KEY":"",
+    "domain":"",
     "intro": {
         "guild_id":"",
         "discord_token":"",
@@ -41,6 +42,7 @@
             "ceterosexual":"",
             "sexquestion":"",
             "othersexuality":"",
+            "unlabeledsexuality":"",
             "homoromantic":"",
             "biromantic":"",
             "panromantic":"",
@@ -56,6 +58,7 @@
             "unlabelromantic":"",
             "romanticquestion":"",
             "otherromantic":"",
+            "unlabeledromantic":"",
             "male":"",
             "female":"",
             "transmale":"",
@@ -68,6 +71,7 @@
             "genderfluid":"",
             "genderquestion":"",
             "othergender":"",
+            "unlabeledgender":"",
             "hehim":"",
             "sheher":"",
             "theythem":"",
