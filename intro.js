@@ -906,6 +906,12 @@ async function interestsStage(id) {
                     custom_id: "intro_interest_tech"
                 },{
                     type: 2,
+                    label: "Theology and Philosophy",
+                    emoji: {name: "🧠"},
+                    style: 1,
+                    custom_id: "intro_interest_theoandphi"
+                },{
+                    type: 2,
                     label: "Done",
                     style: 3,
                     custom_id: "intro_interestdone_done"
