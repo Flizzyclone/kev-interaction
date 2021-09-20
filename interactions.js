@@ -193,9 +193,16 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
         let messageEdit = await messageTools.disableComponents(interaction);
         await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
       } else if (stage == "pronoun") {
+        intro.addPronounRole(interaction.user.id, detail);
+        let messageEdit = await messageTools.multiComponents(interaction, stage);
+        await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
+      } else if (stage == "pronounremove") {
+        intro.removePronounRole(interaction.user.id, detail);
+        let messageEdit = await messageTools.multiComponents(interaction, stage);
+        await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
+      } else if (stage == "pronoundone") {
         intro.regionStage(interaction.user.id);
-        intro.addRole(interaction.user.id,"pronoun",detail);
-        let messageEdit = await messageTools.disableComponents(interaction);
+        let messageEdit = await messageTools.disableComponentsInterests(interaction);
         await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
       } else if (stage == "region") {
         intro.interestsStage(interaction.user.id);
@@ -208,11 +215,11 @@ router.post('/', verifyKeyMiddleware(PUB_KEY), async (req, res) => {
         await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
       } else if (stage == "interest") {
         intro.addInterestRole(interaction.user.id, detail);
-        let messageEdit = await messageTools.interestComponents(interaction, stage);
+        let messageEdit = await messageTools.multiComponents(interaction, stage);
         await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
       } else if (stage == "interestremove") {
         intro.removeInterestRole(interaction.user.id, detail);
-        let messageEdit = await messageTools.interestComponents(interaction, stage);
+        let messageEdit = await messageTools.multiComponents(interaction, stage);
         await axios.patch(`https://discord.com/api/webhooks/${interaction.application_id}/${interaction.token}/messages/@original`, JSON.stringify(messageEdit), {headers: {'Content-Type': 'application/json'}});
       } else if (stage == "color") {
         intro.altStage(interaction.user.id);

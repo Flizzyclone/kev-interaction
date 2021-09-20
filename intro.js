@@ -175,7 +175,7 @@ async function previouslyJoined(member) {
         data: {
             embed: {
                 title:'Previous Info',
-                description:`**Looks like you've joined before! Does all this information still look up to date?**\n\nName: ${memEntry.dataValues.name}\nReddit: ${memEntry.dataValues.reddit_name.replace("**None/Didn't want to verify, ask for verification through Discord**","None")}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexuality: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nRegion: ${(GTV.roles.cache.get(memEntry.dataValues.region)).name}\nAlt Account: ${memEntry.dataValues.alt}`
+                description:`**Looks like you've joined before! Does all this information still look up to date?**\n\nName: ${memEntry.dataValues.name}\nReddit: ${memEntry.dataValues.reddit_name.replace("**None/Didn't want to verify, ask for verification through Discord**","None")}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexuality: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPronouns: ${await formatMultipleRoles(memEntry.dataValues.pronoun, GTV)}\nRegion: ${(GTV.roles.cache.get(memEntry.dataValues.region)).name}\nAlt Account: ${memEntry.dataValues.alt}`
             },
             components: [
                 {
@@ -200,6 +200,22 @@ async function previouslyJoined(member) {
     });
 }
 
+async function formatMultipleRoles(roleString, GTV) {
+    if (roleString == null) {
+        return '';
+    } else {
+        let str = "";
+        let roleIDs = roleString.split(';');
+        for (i=0; i < roleIDs.length; i++) {
+            if(roleIDs[i] != '') {
+                let role = await GTV.roles.cache.get(roleIDs[i])
+                str += `${role.name}, `;
+            }
+        }
+        return str;
+    }
+}
+
 async function previousYes(id) {
     finished(id);
     let memEntry = await memberDB.findByPk(id);
@@ -207,24 +223,31 @@ async function previousYes(id) {
     let member = await GTV.members.fetch(id);
     member.setNickname((memEntry.dataValues.name), 'Automated introduction nicknaming');
     member.roles.add(GTV.roles.cache.get(memEntry.dataValues.age));
-    member.roles.add(GTV.roles.cache.get(memEntry.dataValues.pronoun));
     member.roles.add(GTV.roles.cache.get(memEntry.dataValues.region));
     member.roles.add(GTV.roles.cache.get(memEntry.dataValues.sexuality));
     member.roles.add(GTV.roles.cache.get(memEntry.dataValues.romantic));
     member.roles.add(GTV.roles.cache.get(memEntry.dataValues.gender));
-    console.log(memEntry.dataValues.alt);
     if (memEntry.dataValues.alt == "True") {
         member.roles.add(GTV.roles.cache.get(config.intro.roleIDs.alt));
     }
     if (memEntry.dataValues.color != null) {
         member.roles.add(GTV.roles.cache.get(memEntry.dataValues.color));
     }
+    if (memEntry.dataValues.pronoun != null) {
+        let roleIDs = memEntry.dataValues.pronoun.split(';');
+        for (i=0; i < roleIDs.length; i++) {
+            if(roleIDs[i] != '') {
+                member.roles.add(GTV.roles.cache.get(roleIDs[i]));
+            }
+        }
+    }
     if (memEntry.dataValues.interest != null) {
         let roleIDs = memEntry.dataValues.interest.split(';');
-        for (i=0; i < roleIDs.length-1; i++) {
-            member.roles.add(GTV.roles.cache.get(roleIDs[i]));
+        for (i=0; i < roleIDs.length; i++) {
+            if(roleIDs[i] != '') {
+                member.roles.add(GTV.roles.cache.get(roleIDs[i]));
+            }
         }
-        console.log(roleIDs);
     }
 }
 
@@ -699,27 +722,51 @@ async function genderStage(id) {
     });
 }
 
+async function addPronounRole(id, detail) {
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
+    let roleID = config.intro.roleIDs[detail];
+    let role = GTV.roles.cache.get(roleID);
+    let member = await GTV.members.fetch(id);
+    member.roles.add(role);
+    let memEntry = await memberDB.findByPk(id);
+    let memPronoun = memEntry.dataValues.pronoun;
+    memPronoun += `${role.id};`;
+    memberDB.update({ pronoun: memPronoun }, { where: { user_id: id } });
+}
+
+async function removePronounRole(id, detail) {
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
+    let roleID = config.intro.roleIDs[detail];
+    let role = GTV.roles.cache.get(roleID);
+    let member = await GTV.members.fetch(id);
+    member.roles.remove(role);
+    let memEntry = await memberDB.findByPk(id);
+    let memPronoun = memEntry.dataValues.pronoun;
+    memPronoun = memPronoun.replace(`${role.id};`,"");
+    memberDB.update({ pronoun: memPronoun }, { where: { user_id: id } });
+}
+
 async function pronounStage(id) {
     let user = await client.users.fetch(id);
     let directmess = await user.createDM();
     client.api.channels(directmess.id).messages.post({
         data: {
-            content:"What are your preferred pronouns?",
+            content:"What are your preferred pronouns? Press the 'Done' button when you are done selecting pronoun roles.\n\nSelected the wrong pronouns? Just click again to deselect!",
             components: [{
                     type: 1,
                     components: [{
                             type: 2,
-                            label: "He/Him",
+                            label: "He/Him (Preferred)",
                             style: 1,
                             custom_id: "intro_pronoun_hehim"
                         },{
                             type: 2,
-                            label: "She/Her",
+                            label: "She/Her (Preferred)",
                             style: 1,
                             custom_id: "intro_pronoun_sheher"
                         },{
                             type: 2,
-                            label: "They/Them",
+                            label: "They/Them (Preferred)",
                             style: 1,
                             custom_id: "intro_pronoun_theythem"
                         }]
@@ -737,16 +784,50 @@ async function pronounStage(id) {
                             custom_id: "intro_pronoun_askpronoun"
                         },{
                             type: 2,
-                            label: "Other Pronouns",
+                            label: "Other Pronouns (Preferred)",
                             style: 1,
                             custom_id: "intro_pronoun_otherpronoun"
                         },{
                             type: 2,
-                            label: "No Pronouns",
+                            label: "No Pronouns (Preferred)",
                             style: 1,
                             custom_id: "intro_pronoun_nopronoun"
+                        },{
+                            type: 2,
+                            label: "He/Him",
+                            style: 3,
+                            custom_id: "intro_pronoun_hehimnon"
                         }
                     ]
+            },{
+                type: 1,
+                components: [{
+                        type: 2,
+                        label: "She/Her",
+                        style: 1,
+                        custom_id: "intro_pronoun_shehernon"
+                    },{
+                        type: 2,
+                        label: "They/Them",
+                        style: 1,
+                        custom_id: "intro_pronoun_theythemnon"
+                    },{
+                        type: 2,
+                        label: "Other Pronouns",
+                        style: 1,
+                        custom_id: "intro_pronoun_otherpronounnon"
+                    },{
+                        type: 2,
+                        label: "No Pronouns",
+                        style: 1,
+                        custom_id: "intro_pronoun_nopronounnon"
+                    },{
+                        type: 2,
+                        label: "Done",
+                        style: 3,
+                        custom_id: "intro_pronoundone_done"
+                    }
+                ]
             }]
         }
     });
@@ -1156,7 +1237,7 @@ async function finished(id) {
             data: {
                 embed: {
                     title:`New Member - ${memEntry.dataValues.name}/${user.tag}`,
-                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nAlt Account: ${memEntry.dataValues.alt}`
+                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${await formatMultipleRoles(memEntry.dataValues.pronoun,GTV)}\nAlt Account: ${memEntry.dataValues.alt}`
                 }, 
                 components: [
                     {
@@ -1179,7 +1260,7 @@ async function finished(id) {
             data: {
                 embed: {
                     title:`New Member - ${memEntry.dataValues.name}/${user.tag}`,
-                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${(GTV.roles.cache.get(memEntry.dataValues.pronoun)).name}\nAlt Account: ${memEntry.dataValues.alt}`
+                    description:`Discord Tag: ${user.tag}\nDiscord ID: ${id}\nFirst Name: ${memEntry.dataValues.name}\nReddit Username: ${memEntry.dataValues.reddit_name}\nAge: ${(GTV.roles.cache.get(memEntry.dataValues.age)).name}\nSexual Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.sexuality)).name}\nRomantic Orientation: ${(GTV.roles.cache.get(memEntry.dataValues.romantic)).name}\nGender Identity: ${(GTV.roles.cache.get(memEntry.dataValues.gender)).name}\nPreferred Pronouns: ${await formatMultipleRoles(memEntry.dataValues.pronoun,GTV)}\nAlt Account: ${memEntry.dataValues.alt}`
                 }, 
                 components: [
                     {
@@ -1236,5 +1317,5 @@ async function sendVerificationMsg(id) {
 client.login(config.intro.discord_token);
 
 module.exports = {
-    updateUserValue, addRole, previousYes, redditAccCheck, wantSub, redditUserInput, notOnSub, nameStage, sexualityStage, romanticStage, genderStage, pronounStage, regionStage, interestsStage, colorStage, altStage, altAccount, addInterestRole, removeInterestRole, finished, userApproved, sendVerificationMsg
+    updateUserValue, addRole, previousYes, redditAccCheck, wantSub, redditUserInput, notOnSub, nameStage, sexualityStage, romanticStage, genderStage, pronounStage, regionStage, interestsStage, colorStage, altStage, altAccount, addInterestRole, removeInterestRole, addPronounRole, removePronounRole, finished, userApproved, sendVerificationMsg
 };
