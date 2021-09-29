@@ -200,16 +200,20 @@ async function previouslyJoined(member) {
     });
 }
 
-async function formatMultipleRoles(roleString, GTV) {
+async function formatMultipleRoles(roleString) {
+    const GTV = client.guilds.cache.get(config.intro.guild_id);
     if (roleString == null) {
         return '';
     } else {
         let str = "";
         let roleIDs = roleString.split(';');
+        console.log(roleIDs);
         for (i=0; i < roleIDs.length; i++) {
             if(roleIDs[i] != '') {
-                let role = await GTV.roles.cache.get(roleIDs[i])
-                str += `${role.name}, `;
+                let role = await GTV.roles.fetch(roleIDs[i])
+                if (role != null) {
+                    str += `${role.name}, `;  
+                }
             }
         }
         return str;
@@ -725,7 +729,7 @@ async function genderStage(id) {
 async function addPronounRole(id, detail) {
     const GTV = client.guilds.cache.get(config.intro.guild_id);
     let roleID = config.intro.roleIDs[detail];
-    let role = GTV.roles.cache.get(roleID);
+    let role = await GTV.roles.fetch(roleID);
     let member = await GTV.members.fetch(id);
     member.roles.add(role);
     let memEntry = await memberDB.findByPk(id);
@@ -737,7 +741,7 @@ async function addPronounRole(id, detail) {
 async function removePronounRole(id, detail) {
     const GTV = client.guilds.cache.get(config.intro.guild_id);
     let roleID = config.intro.roleIDs[detail];
-    let role = GTV.roles.cache.get(roleID);
+    let role = await GTV.roles.fetch(roleID);
     let member = await GTV.members.fetch(id);
     member.roles.remove(role);
     let memEntry = await memberDB.findByPk(id);
