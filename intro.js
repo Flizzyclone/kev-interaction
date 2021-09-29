@@ -799,7 +799,7 @@ async function pronounStage(id) {
                         },{
                             type: 2,
                             label: "He/Him",
-                            style: 3,
+                            style: 1,
                             custom_id: "intro_pronoun_hehimnon"
                         }
                     ]
@@ -883,11 +883,6 @@ async function regionStage(id) {
                             label: "Oceania",
                             style: 1,
                             custom_id: "intro_region_oceania"
-                        },{
-                            type: 2,
-                            label: "None",
-                            style: 1,
-                            custom_id: "intro_region_none"
                         }
                     ]
             }]
