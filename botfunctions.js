@@ -1,9 +1,11 @@
 const Discord = require('discord.js')
 const client = new Discord.Client
 
+const config = require('./config.json');
+
 const fs = require('fs'); 
 
-const suggestions = require('../gtv/suggestions');
+const suggestions = require('../kevin/suggestions');
 
 const demographicsFunctions = require('./demographics');
 
@@ -48,7 +50,7 @@ async function anonConcernPost(details) {
     title:`New Concern - ${details.Timestamp[0]}`,
     description:desc
   };
-  client.api.channels('').messages.post({
+  client.api.channels(config.channels.anonymousFormOutput).messages.post({
     data: {
       embed: embed,
     }
@@ -209,7 +211,7 @@ async function anonSuggestionPost(details) {
 async function anonSuggestion(message) {
   let botstuff = client.channels.cache.get('');
   let outputchannel = client.channels.cache.get('');
-  let settings = JSON.parse(fs.readFileSync('../gtv/data/suggestiondata.json'));
+  let settings = JSON.parse(fs.readFileSync('../kevin/data/suggestiondata.json'));
   let channel = client.channels.cache.get(settings.suggestionschannel);
   let suggestReq = await suggestions.anonymousSuggestion(message.embeds[0].description, channel);
   if (suggestReq.success = true) {

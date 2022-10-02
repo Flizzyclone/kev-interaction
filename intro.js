@@ -125,8 +125,8 @@ async function updateUserValue(id, prop, val) {
 
 async function initiateVerif(member) {
     let outputChannel = client.channels.cache.get(config.intro.outputChannel);
-    let directmess = await member.createDM();
     try {
+        let directmess = await member.createDM();
         client.api.channels(directmess.id).messages.post({
             data: {
                 embed: {
